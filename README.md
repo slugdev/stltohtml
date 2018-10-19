@@ -1,5 +1,5 @@
 # stltostp
-Command line utility to convert stl files to a single html webgl file. 
+Command line utility to convert a stl file to a single html webgl file. 
 
 ### Usage
 stltohtml <stl_file> <html_file>
