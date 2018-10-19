@@ -28,9 +28,14 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.*/
 
 #include <vector>
 #include <string>
-#include "StepKernel.h"
 #include <iostream>
 #include <fstream>
+#include <sstream>
+#include <algorithm>
+// java script
+// inspired by: 
+
+char* java_script = "";
 
 std::vector<double> read_stl_binary(std::string file_name)
 {
@@ -147,11 +152,101 @@ std::vector<double> read_stl(std::string file_name)
 	return nodes;
 }
 
+char* html_pre =
+"<html>\n"
+"   <canvas style=\"width:50%; height:50%;\" id = 'glcanvas'>< /canvas>"
+"   <script>\n";
+
+char* html_post =
+"   </script>\n"
+"</html>\n";
+
+
+
+
+void export_html_mesh(std::string file_name, std::vector<double> nodes)
+{
+	std::ofstream html_file;
+	html_file.open(file_name);
+	if (!html_file)
+		return;
+
+	// header info
+	html_file << html_pre;
+	html_file << "var vertices = [\n";
+	for (int i = 0; i < nodes.size() / 9; i++)
+	{
+		html_file << nodes[i * 9 + 0] << ", " << nodes[i * 9 + 1] << ", " << nodes[i * 9 + 2] << ", " << 
+			nodes[i * 9 + 3] << ", " << nodes[i * 9 + 4] << ", " << nodes[i * 9 + 5] << ", " <<
+			nodes[i * 9 + 6] << ", " << nodes[i * 9 + 7] << ", " << nodes[i * 9 + 8] << ",\n";
+	}
+	html_file << "]\n\n";
+
+	int cnt = 0;
+	html_file << "var indices = [\n";
+	for (int i = 0; i < nodes.size() / 9; i++)
+	{
+		html_file << cnt + 0 << ", " << cnt + 1 << ", " << cnt + 2 << ",\n";
+		cnt += 3;
+	}
+	html_file << "]\n\n";
+
+	html_file << "var colors = [\n";
+	for (int i = 0; i < nodes.size() / 9; i++)
+	{
+		html_file << 1. << ", " << 0. << ", " << 0. << ", " <<
+			 1. << ", " << 0. << ", " << 0. << ", " << 
+			 1. << ", " << 0. << ", " << 0. << ", " << "\n";
+	}
+	html_file << "]\n\n";
+
+
+
+	html_file << html_post;
+}
+
+std::vector<double> rescale(std::vector<double> nodes_in)
+{
+	double minv[3] = { 0,0,0 };
+	double maxv[3] = { 0,0,0 };
+	std::vector<double> nodes_out = nodes_in;
+	for (int i = 0; i < nodes_in.size()/3; i++)
+	{
+		for (int j = 0; j < 3; j++)
+		{
+			if (i == 0 || minv[j] > nodes_in[i * 3 + j])
+				minv[j] = nodes_in[i * 3 + j];
+
+			if (i == 0 || maxv[j] < nodes_in[i * 3 + j])
+				maxv[j] = nodes_in[i * 3 + j];
+		}
+	}
+
+	double center[3] = {
+		(maxv[0] + minv[0])*.5,
+		(maxv[1] + minv[1])*.5,
+		(maxv[2] + minv[2])*.5 };
+
+	double scales[3] = { 2.0 / (maxv[0] - minv[0]), 2.0 / (maxv[1] - minv[1]), 2.0 / (maxv[2] - minv[2]) };
+
+	double max_scale = std::max(std::max(scales[0], scales[1]), scales[3]);
+
+	for (int i = 0; i < nodes_in.size() / 3; i++)
+	{
+		for (int j = 0; j < 3; j++)
+		{
+			nodes_out[i * 3 + j] = max_scale*(nodes_in[i * 3 + j]- scales[j]);
+		}
+	}
+	return nodes_out;
+}
+
+
 int main(int arv, char* argc[])
 {
 	double tol = 1e-6;
 	bool mergeplanar = false;
-	std::string help = "stltohtml <stl_file> <step_file> [tol <value>] [mergeplanar]\n";
+	std::string help = "stltohtml <stl_file> <html_file>\n";
 
 	if (arv < 3)
 	{
@@ -171,12 +266,6 @@ int main(int arv, char* argc[])
 			std::cout << "Minimum edge tolerance set to " << tol << "\n";
 			arg_cnt++;
 		}
-		else if (cur_arg == "mergeplanar")
-		{
-			mergeplanar = true;
-			std::cout << "Treating input file as a step file instead of stl...\n";
-			arg_cnt++;
-		}
 		else
 		{
 			std::cout << "Unknown parameter " << cur_arg << "\n";
@@ -192,14 +281,10 @@ int main(int arv, char* argc[])
 		return 1;
 	}
 	
-	std::cout << "Read " << nodes.size() / 9 << " trianges from " << input_file << "\n";
-
-	StepKernel se;
-	int merged_edge_cnt = 0;
-	se.build_tri_body(nodes,tol,merged_edge_cnt);
-	se.write_step(output_file);
-	std::cout << "Merged " << merged_edge_cnt << " edges\n";
-	std::cout << "Exported STEP file: " << output_file << "\n";
+	nodes = rescale(nodes);
+	std::cout << "Read " << nodes.size() / 9 << " triangles from " << input_file << "\n";
+	export_html_mesh(output_file, nodes);
+	std::cout << "Exported HTML file: " << output_file << "\n";
 	return 0;
 }
 
