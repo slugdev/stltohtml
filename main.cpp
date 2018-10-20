@@ -32,10 +32,16 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.*/
 #include <fstream>
 #include <sstream>
 #include <algorithm>
-// java script
-// inspired by: 
+#include "mainjs.h"
+char* htmlpre =
+"<html>\n"
+"   <canvas style=\"width:100%; height:100%;\" id = 'glcanvas'>< /canvas>"
+"   <script>\n";
 
-char* java_script = "";
+char* htmlpost =
+"   </script>\n"
+"</html>\n";
+
 
 std::vector<double> read_stl_binary(std::string file_name)
 {
@@ -152,17 +158,6 @@ std::vector<double> read_stl(std::string file_name)
 	return nodes;
 }
 
-char* html_pre =
-"<html>\n"
-"   <canvas style=\"width:50%; height:50%;\" id = 'glcanvas'>< /canvas>"
-"   <script>\n";
-
-char* html_post =
-"   </script>\n"
-"</html>\n";
-
-
-
 
 void export_html_mesh(std::string file_name, std::vector<double> nodes)
 {
@@ -172,7 +167,7 @@ void export_html_mesh(std::string file_name, std::vector<double> nodes)
 		return;
 
 	// header info
-	html_file << html_pre;
+	html_file << htmlpre;
 	html_file << "var vertices = [\n";
 	for (int i = 0; i < nodes.size() / 9; i++)
 	{
@@ -199,10 +194,8 @@ void export_html_mesh(std::string file_name, std::vector<double> nodes)
 			 1. << ", " << 0. << ", " << 0. << ", " << "\n";
 	}
 	html_file << "]\n\n";
-
-
-
-	html_file << html_post;
+	html_file << mainjs;
+	html_file << htmlpost;
 }
 
 std::vector<double> rescale(std::vector<double> nodes_in)
@@ -227,7 +220,8 @@ std::vector<double> rescale(std::vector<double> nodes_in)
 		(maxv[1] + minv[1])*.5,
 		(maxv[2] + minv[2])*.5 };
 
-	double scales[3] = { 2.0 / (maxv[0] - minv[0]), 2.0 / (maxv[1] - minv[1]), 2.0 / (maxv[2] - minv[2]) };
+	double targ_size = 3.0;
+	double scales[3] = { targ_size / (maxv[0] - minv[0]), targ_size / (maxv[1] - minv[1]), targ_size / (maxv[2] - minv[2]) };
 
 	double max_scale = std::max(std::max(scales[0], scales[1]), scales[3]);
 
@@ -235,7 +229,7 @@ std::vector<double> rescale(std::vector<double> nodes_in)
 	{
 		for (int j = 0; j < 3; j++)
 		{
-			nodes_out[i * 3 + j] = max_scale*(nodes_in[i * 3 + j]- scales[j]);
+			nodes_out[i * 3 + j] = max_scale*(nodes_in[i * 3 + j]- center[j]);
 		}
 	}
 	return nodes_out;
