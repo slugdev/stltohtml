@@ -10,25 +10,25 @@ ADD_EXECUTABLE (stltohtml ${stltohtml_SRC})
 
 ADD_TEST(
 	NAME cat_dish
-	COMMAND stltohtml cat_dish.stl cat_dish.stp tol .0000001
+	COMMAND stltohtml cat_dish.stl cat_dish.html
 	WORKING_DIRECTORY "${PROJECT_SOURCE_DIR}/test"
 )
 
 ADD_TEST(
 	NAME bucket
-	COMMAND stltohtml bucket.stl bucket.stp
+	COMMAND stltohtml bucket.stl bucket.html
 	WORKING_DIRECTORY "${PROJECT_SOURCE_DIR}/test"
 )
 
 ADD_TEST(
 	NAME cat_dish_bin
-	COMMAND stltohtml cat_dish_bin.stl cat_dish_bin.stp
+	COMMAND stltohtml cat_dish_bin.stl cat_dish_bin.html
 	WORKING_DIRECTORY "${PROJECT_SOURCE_DIR}/test"
 )
 
 ADD_TEST(
 	NAME single_tri
-	COMMAND stltohtml single_tri.stl single_tri.stp
+	COMMAND stltohtml single_tri.stl single_tri.html
 	WORKING_DIRECTORY "${PROJECT_SOURCE_DIR}/test"
 )
 
@@ -39,7 +39,7 @@ set(CPACK_GENERATOR WIX)
 set(CPACK_PACKAGE_NAME "stltohtml")
 set(CPACK_PACKAGE_VENDOR "slugdev")
 set(CPACK_RESOURCE_FILE_LICENSE "${CMAKE_SOURCE_DIR}/LICENSE.txt")
-set(CPACK_PACKAGE_DESCRIPTION_SUMMARY "Command line utility to convert a ascii stl file a single html file.")
+set(CPACK_PACKAGE_DESCRIPTION_SUMMARY "Command line utility to convert a stl file into a single html file.")
 set(CPACK_PACKAGE_VERSION_MAJOR "1")
 set(CPACK_PACKAGE_VERSION_MINOR "0")
 set(CPACK_PACKAGE_VERSION_PATCH "0")

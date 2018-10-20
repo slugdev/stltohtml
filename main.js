@@ -124,7 +124,8 @@ canvas.addEventListener("mousemove", mouseMove, false);
 
 /*=========================rotation================*/
 
-function rotateX(m, angle) {
+function rotateX(m, angle)
+{
     var c = Math.cos(angle);
     var s = Math.sin(angle);
     var mv1 = m[1], mv5 = m[5], mv9 = m[9];
@@ -138,7 +139,8 @@ function rotateX(m, angle) {
     m[10] = m[10] * c + mv9 * s;
 }
 
-function rotateY(m, angle) {
+function rotateY(m, angle)
+{
     var c = Math.cos(angle);
     var s = Math.sin(angle);
     var mv0 = m[0], mv4 = m[4], mv8 = m[8];
