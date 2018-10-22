@@ -70,7 +70,7 @@ void read_stl_binary(std::string file_name, std::vector<double>& nodes, std::vec
 	uint32_t tris = 0;
 	file.read((char*)(&tris),sizeof(uint32_t));
 	nodes.resize(tris * 9);
-	normals.resize(tris * 3);
+	normals.resize(tris * 9);
 	for (uint32_t i = 0; i < tris; i++)
 	{
 		float_t  n[3], pts[9];
@@ -81,7 +81,7 @@ void read_stl_binary(std::string file_name, std::vector<double>& nodes, std::vec
 		for (int j = 0; j < 9; j++)
 			nodes[i * 9 + j] = pts[j];
 		for (int j = 0; j < 9; j++)
-			normals[i * 3 + j%3] = n[j%3];
+			normals[i * 9 + j] = n[j%3];
 
 	}
 	file.close();
@@ -171,7 +171,7 @@ void read_stl(std::string file_name,std::vector<double>& nodes, std::vector<doub
 }
 
 
-void export_html_mesh(std::string file_name, std::vector<double> nodes, std::vector<double> normals)
+void export_html_mesh(std::string file_name, std::vector<double> nodes, std::vector<double> normals, double color[3])
 {
 	std::ofstream html_file;
 	html_file.open(file_name);
@@ -208,9 +208,9 @@ void export_html_mesh(std::string file_name, std::vector<double> nodes, std::vec
 	html_file << "var colors = [\n";
 	for (int i = 0; i < nodes.size() / 9; i++)
 	{
-		html_file << 1. << ", " << 0. << ", " << 0. << ", " <<
-			 1. << ", " << 0. << ", " << 0. << ", " << 
-			 1. << ", " << 0. << ", " << 0. << ", " << "\n";
+		html_file << color[0] << ", " << color[1] << ", " << color[2] << ", " <<
+			color[0] << ", " << color[1] << ", " << color[2] << ", " <<
+			color[0] << ", " << color[1] << ", " << color[2] << ", " << "\n";
 	}
 	html_file << "]\n\n";
 	html_file << mainjs;
@@ -296,10 +296,10 @@ int main(int arv, char* argc[])
 	}
 	
 
-
+	double color[3] = { 1,0,0 };
 	nodes = rescale(nodes);
 	std::cout << "Read " << nodes.size() / 9 << " triangles from " << input_file << "\n";
-	export_html_mesh(output_file, nodes,normals);
+	export_html_mesh(output_file, nodes,normals, color);
 	std::cout << "Exported HTML file: " << output_file << "\n";
 	return 0;
 }

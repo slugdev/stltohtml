@@ -29,27 +29,6 @@ gl.bindBuffer(gl.ELEMENT_ARRAY_BUFFER, index_buffer);
 gl.bufferData(gl.ELEMENT_ARRAY_BUFFER, new Uint32Array(indices), gl.STATIC_DRAW);
 
 /*=================== SHADERS =================== */ 
-
-/*var vertCode = 'attribute vec3 position;' +
-   'uniform mat4 Pmatrix;' +
-   'uniform mat4 Vmatrix;' +
-   'uniform mat4 Mmatrix;' +
-   'uniform mat4 uNormalMatrix;' + 
-   'attribute vec3 color;' +//the color of the point
-   'attribute vec3 normal;' +//the normal of the point
-   'varying vec3 vColor;' +
-   'varying vec3 vLighting;' +
-   'void main(void) ' +//pre-built function
-   '{' +
-      'gl_Position = Pmatrix*Vmatrix*Mmatrix*vec4(position, 1.);' +
-      'vec3 ambientLight = vec3(0.3, 0.3, 0.3);' + 
-      'vec3 directionalLightColor = vec3(1, 1, 1);' +
-      'vec3 directionalVector = normalize(vec3(0.85, 0.8, 0.75));' +
-      'vec4 transformedNormal = uNormalMatrix * vec4(normal, 1.0);' +
-      'float directional = max(dot(transformedNormal.xyz, directionalVector), 0.0);' +
-      'vColor = color;' +
-      'vLighting = ambientLight + (directionalLightColor * directional);'+
-   '}';*/
 var vertCode = 'attribute vec3 position;' +
    'uniform mat4 Pmatrix;' +
    'uniform mat4 Vmatrix;' +
@@ -66,7 +45,7 @@ var vertCode = 'attribute vec3 position;' +
       'vec3 directionalLightColor = vec3(1, 1, 1);' +
       'vec3 directionalVector = normalize(vec3(0.85, 0.8, 0.75));' +
       'vec4 transformedNormal = Nmatrix * vec4(normal, 1.0);' +
-	  'float directional = max(dot(transformedNormal.xyz, directionalVector), 0.0);' +
+      'float directional = max(dot(transformedNormal.xyz, directionalVector), 0.0);' +
       'vColor = color;' +
 	  'vLighting = ambientLight + (directionalLightColor * directional);' +
    '}';
@@ -77,13 +56,6 @@ var fragCode = 'precision mediump float;' +
    'void main(void) {' +
       'gl_FragColor = vec4(vColor * vLighting,1.);' +
    '}';
-
-/*var fragCode = 'precision mediump float;' +
-   'varying vec3 vColor;' +
-   'void main(void)' +
-    '{' +
-      'gl_FragColor = vec4(vColor * vLighting,1.);' +
-   '}';*/
 
 var vertShader = gl.createShader(gl.VERTEX_SHADER);
 gl.shaderSource(vertShader, vertCode);
@@ -173,7 +145,9 @@ canvas.addEventListener("mouseup", mouseUp, false);
 canvas.addEventListener("mouseout", mouseUp, false);
 canvas.addEventListener("mousemove", mouseMove, false);
 
-function transpose(out, a) {
+// https://github.com/toji/gl-matrix - although do I really need to attribute a transpose?
+function transpose(out, a)
+{
     // If we are transposing ourselves we can skip a few steps but have to cache some values
     if (out === a) {
         let a01 = a[1], a02 = a[2], a03 = a[3];
@@ -192,7 +166,9 @@ function transpose(out, a) {
         out[12] = a03;
         out[13] = a13;
         out[14] = a23;
-    } else {
+    }
+    else
+    {
         out[0] = a[0];
         out[1] = a[4];
         out[2] = a[8];
@@ -214,7 +190,9 @@ function transpose(out, a) {
     return out;
 }
 
-function invert(out, a) {
+// https://github.com/toji/gl-matrix - nice that they used raw arrays
+function invert(out, a)
+{
     let a00 = a[0], a01 = a[1], a02 = a[2], a03 = a[3];
     let a10 = a[4], a11 = a[5], a12 = a[6], a13 = a[7];
     let a20 = a[8], a21 = a[9], a22 = a[10], a23 = a[11];
