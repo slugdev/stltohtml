@@ -8,4 +8,4 @@ stltohtml <stl_file> <html_file>
 BSD
 `
 ## Windows Installer
-[stltohtml-1.0.0-win64.msi](https://github.com/slugdev/stltohtml/releases/download/v1.0/stltohtml-1.0.0-win64.msi)
+[stltohtml-1.0.0-win64.msi](https://github.com/slugdev/stltohtml/releases/download/1.0/stltohtml-1.0.0-win64.msi)
