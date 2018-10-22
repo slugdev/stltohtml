@@ -18,6 +18,11 @@ var color_buffer = gl.createBuffer();
 gl.bindBuffer(gl.ARRAY_BUFFER, color_buffer);
 gl.bufferData(gl.ARRAY_BUFFER, new Float32Array(colors), gl.STATIC_DRAW);
 
+// Create and store data into normal buffer
+var normal_buffer = gl.createBuffer();
+gl.bindBuffer(gl.ARRAY_BUFFER, normal_buffer);
+gl.bufferData(gl.ARRAY_BUFFER, new Float32Array(normals), gl.STATIC_DRAW);
+
 // Create and store data into index buffer
 var index_buffer = gl.createBuffer();
 gl.bindBuffer(gl.ELEMENT_ARRAY_BUFFER, index_buffer);
@@ -25,22 +30,60 @@ gl.bufferData(gl.ELEMENT_ARRAY_BUFFER, new Uint32Array(indices), gl.STATIC_DRAW)
 
 /*=================== SHADERS =================== */ 
 
+/*var vertCode = 'attribute vec3 position;' +
+   'uniform mat4 Pmatrix;' +
+   'uniform mat4 Vmatrix;' +
+   'uniform mat4 Mmatrix;' +
+   'uniform mat4 uNormalMatrix;' + 
+   'attribute vec3 color;' +//the color of the point
+   'attribute vec3 normal;' +//the normal of the point
+   'varying vec3 vColor;' +
+   'varying vec3 vLighting;' +
+   'void main(void) ' +//pre-built function
+   '{' +
+      'gl_Position = Pmatrix*Vmatrix*Mmatrix*vec4(position, 1.);' +
+      'vec3 ambientLight = vec3(0.3, 0.3, 0.3);' + 
+      'vec3 directionalLightColor = vec3(1, 1, 1);' +
+      'vec3 directionalVector = normalize(vec3(0.85, 0.8, 0.75));' +
+      'vec4 transformedNormal = uNormalMatrix * vec4(normal, 1.0);' +
+      'float directional = max(dot(transformedNormal.xyz, directionalVector), 0.0);' +
+      'vColor = color;' +
+      'vLighting = ambientLight + (directionalLightColor * directional);'+
+   '}';*/
 var vertCode = 'attribute vec3 position;' +
    'uniform mat4 Pmatrix;' +
    'uniform mat4 Vmatrix;' +
    'uniform mat4 Mmatrix;' +
+   'uniform mat4 Nmatrix;' +
    'attribute vec3 color;' +//the color of the point
+   'attribute vec3 normal;' +//the normal of the point
    'varying vec3 vColor;' +
-   'void main(void) { ' +//pre-built function
+   'varying vec3 vLighting;' +
+   'void main(void) ' +//pre-built function
+   '{' +
       'gl_Position = Pmatrix*Vmatrix*Mmatrix*vec4(position, 1.);' +
+      'vec3 ambientLight = vec3(0.3, 0.3, 0.3);' +
+      'vec3 directionalLightColor = vec3(1, 1, 1);' +
+      'vec3 directionalVector = normalize(vec3(0.85, 0.8, 0.75));' +
+      'vec4 transformedNormal = Nmatrix * vec4(normal, 1.0);' +
+	  'float directional = max(dot(transformedNormal.xyz, directionalVector), 0.0);' +
       'vColor = color;' +
+	  'vLighting = ambientLight + (directionalLightColor * directional);' +
    '}';
 
 var fragCode = 'precision mediump float;' +
    'varying vec3 vColor;' +
+   'varying vec3 vLighting;' +
    'void main(void) {' +
-      'gl_FragColor = vec4(vColor, 1.);' +
+      'gl_FragColor = vec4(vColor * vLighting,1.);' +
    '}';
+
+/*var fragCode = 'precision mediump float;' +
+   'varying vec3 vColor;' +
+   'void main(void)' +
+    '{' +
+      'gl_FragColor = vec4(vColor * vLighting,1.);' +
+   '}';*/
 
 var vertShader = gl.createShader(gl.VERTEX_SHADER);
 gl.shaderSource(vertShader, vertCode);
@@ -59,6 +102,7 @@ gl.linkProgram(shaderprogram);
 var _Pmatrix = gl.getUniformLocation(shaderprogram, "Pmatrix");
 var _Vmatrix = gl.getUniformLocation(shaderprogram, "Vmatrix");
 var _Mmatrix = gl.getUniformLocation(shaderprogram, "Mmatrix");
+var _Nmatrix = gl.getUniformLocation(shaderprogram, "Nmatrix");
 
 gl.bindBuffer(gl.ARRAY_BUFFER, vertex_buffer);
 var _position = gl.getAttribLocation(shaderprogram, "position");
@@ -69,6 +113,12 @@ gl.bindBuffer(gl.ARRAY_BUFFER, color_buffer);
 var _color = gl.getAttribLocation(shaderprogram, "color");
 gl.vertexAttribPointer(_color, 3, gl.FLOAT, false, 0, 0);
 gl.enableVertexAttribArray(_color);
+
+gl.bindBuffer(gl.ARRAY_BUFFER, normal_buffer);
+var _normal = gl.getAttribLocation(shaderprogram, "normal");
+gl.vertexAttribPointer(_normal, 3, gl.FLOAT, false, 0, 0);
+gl.enableVertexAttribArray(_normal);
+
 gl.useProgram(shaderprogram);
 
 /*==================== MATRIX ====================== */
@@ -85,6 +135,7 @@ function get_projection(angle, a, zMin, zMax) {
 
 var proj_matrix = get_projection(40, canvas.width / canvas.height, 1, 100);
 var mo_matrix = [1, 0, 0, 0, 0, 1, 0, 0, 0, 0, 1, 0, 0, 0, 0, 1];
+var no_matrix = [1, 0, 0, 0, 0, 1, 0, 0, 0, 0, 1, 0, 0, 0, 0, 1];
 var view_matrix = [1, 0, 0, 0, 0, 1, 0, 0, 0, 0, 1, 0, 0, 0, 0, 1];
 
 view_matrix[14] = view_matrix[14] - 6;
@@ -121,6 +172,94 @@ canvas.addEventListener("mousedown", mouseDown, false);
 canvas.addEventListener("mouseup", mouseUp, false);
 canvas.addEventListener("mouseout", mouseUp, false);
 canvas.addEventListener("mousemove", mouseMove, false);
+
+function transpose(out, a) {
+    // If we are transposing ourselves we can skip a few steps but have to cache some values
+    if (out === a) {
+        let a01 = a[1], a02 = a[2], a03 = a[3];
+        let a12 = a[6], a13 = a[7];
+        let a23 = a[11];
+
+        out[1] = a[4];
+        out[2] = a[8];
+        out[3] = a[12];
+        out[4] = a01;
+        out[6] = a[9];
+        out[7] = a[13];
+        out[8] = a02;
+        out[9] = a12;
+        out[11] = a[14];
+        out[12] = a03;
+        out[13] = a13;
+        out[14] = a23;
+    } else {
+        out[0] = a[0];
+        out[1] = a[4];
+        out[2] = a[8];
+        out[3] = a[12];
+        out[4] = a[1];
+        out[5] = a[5];
+        out[6] = a[9];
+        out[7] = a[13];
+        out[8] = a[2];
+        out[9] = a[6];
+        out[10] = a[10];
+        out[11] = a[14];
+        out[12] = a[3];
+        out[13] = a[7];
+        out[14] = a[11];
+        out[15] = a[15];
+    }
+
+    return out;
+}
+
+function invert(out, a) {
+    let a00 = a[0], a01 = a[1], a02 = a[2], a03 = a[3];
+    let a10 = a[4], a11 = a[5], a12 = a[6], a13 = a[7];
+    let a20 = a[8], a21 = a[9], a22 = a[10], a23 = a[11];
+    let a30 = a[12], a31 = a[13], a32 = a[14], a33 = a[15];
+
+    let b00 = a00 * a11 - a01 * a10;
+    let b01 = a00 * a12 - a02 * a10;
+    let b02 = a00 * a13 - a03 * a10;
+    let b03 = a01 * a12 - a02 * a11;
+    let b04 = a01 * a13 - a03 * a11;
+    let b05 = a02 * a13 - a03 * a12;
+    let b06 = a20 * a31 - a21 * a30;
+    let b07 = a20 * a32 - a22 * a30;
+    let b08 = a20 * a33 - a23 * a30;
+    let b09 = a21 * a32 - a22 * a31;
+    let b10 = a21 * a33 - a23 * a31;
+    let b11 = a22 * a33 - a23 * a32;
+
+    // Calculate the determinant
+    let det = b00 * b11 - b01 * b10 + b02 * b09 + b03 * b08 - b04 * b07 + b05 * b06;
+
+    if (!det) {
+        return null;
+    }
+    det = 1.0 / det;
+
+    out[0] = (a11 * b11 - a12 * b10 + a13 * b09) * det;
+    out[1] = (a02 * b10 - a01 * b11 - a03 * b09) * det;
+    out[2] = (a31 * b05 - a32 * b04 + a33 * b03) * det;
+    out[3] = (a22 * b04 - a21 * b05 - a23 * b03) * det;
+    out[4] = (a12 * b08 - a10 * b11 - a13 * b07) * det;
+    out[5] = (a00 * b11 - a02 * b08 + a03 * b07) * det;
+    out[6] = (a32 * b02 - a30 * b05 - a33 * b01) * det;
+    out[7] = (a20 * b05 - a22 * b02 + a23 * b01) * det;
+    out[8] = (a10 * b10 - a11 * b08 + a13 * b06) * det;
+    out[9] = (a01 * b08 - a00 * b10 - a03 * b06) * det;
+    out[10] = (a30 * b04 - a31 * b02 + a33 * b00) * det;
+    out[11] = (a21 * b02 - a20 * b04 - a23 * b00) * det;
+    out[12] = (a11 * b07 - a10 * b09 - a12 * b06) * det;
+    out[13] = (a00 * b09 - a01 * b07 + a02 * b06) * det;
+    out[14] = (a31 * b01 - a30 * b03 - a32 * b00) * det;
+    out[15] = (a20 * b03 - a21 * b01 + a22 * b00) * det;
+
+    return out;
+}
 
 /*=========================rotation================*/
 
@@ -184,6 +323,9 @@ var animate = function (time) {
     rotateY(mo_matrix, THETA);
     rotateX(mo_matrix, PHI);
 
+    invert(no_matrix, mo_matrix);
+    transpose(no_matrix, no_matrix);
+
     time_old = time;
     gl.enable(gl.DEPTH_TEST);
 
@@ -197,6 +339,7 @@ var animate = function (time) {
     gl.uniformMatrix4fv(_Pmatrix, false, proj_matrix);
     gl.uniformMatrix4fv(_Vmatrix, false, view_matrix);
     gl.uniformMatrix4fv(_Mmatrix, false, mo_matrix);
+    gl.uniformMatrix4fv(_Nmatrix, false, no_matrix);
 
     gl.bindBuffer(gl.ELEMENT_ARRAY_BUFFER, index_buffer);
     gl.drawElements(gl.TRIANGLES, indices.length, gl.UNSIGNED_INT, 0);

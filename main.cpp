@@ -43,7 +43,7 @@ char* htmlpost =
 "</html>\n";
 
 
-std::vector<double> read_stl_binary(std::string file_name)
+void read_stl_binary(std::string file_name, std::vector<double>& nodes, std::vector<double>& normals)
 {
 	/*
 	according to wikipedia ...
@@ -57,12 +57,11 @@ std::vector<double> read_stl_binary(std::string file_name)
 	UINT16 – Attribute byte count
 	end	*/
 
-	std::vector<double> nodes;
 	std::ifstream file(file_name, std::ios::in | std::ios::binary);
 	if (!file)
 	{
 		std::cout << "Failed to open binary stl file: " << file_name << "\n";
-		return nodes;
+		exit(1);
 	}
 
 	char header[80];
@@ -71,7 +70,8 @@ std::vector<double> read_stl_binary(std::string file_name)
 	uint32_t tris = 0;
 	file.read((char*)(&tris),sizeof(uint32_t));
 	nodes.resize(tris * 9);
-	for (int i = 0; i < tris; i++)
+	normals.resize(tris * 3);
+	for (uint32_t i = 0; i < tris; i++)
 	{
 		float_t  n[3], pts[9];
 		uint16_t att;
@@ -80,26 +80,27 @@ std::vector<double> read_stl_binary(std::string file_name)
 		file.read((char*)(&att), sizeof(uint16_t));
 		for (int j = 0; j < 9; j++)
 			nodes[i * 9 + j] = pts[j];
+		for (int j = 0; j < 9; j++)
+			normals[i * 3 + j%3] = n[j%3];
+
 	}
 	file.close();
-	return nodes;
 }
 
-std::vector<double> read_stl_ascii(std::string file_name)
+void read_stl_ascii(std::string file_name, std::vector<double>& nodes, std::vector<double>& normals)
 {
-	std::vector<double> nodes;
 	std::ifstream file;
 	file.open(file_name);
 	if (!file)
 	{
 		std::cout << "Failed to open ascii stl file: " << file_name << "\n";
-		return nodes;
+		exit(1);
 	}
 	std::string line;
 	while (std::getline(file, line))
 	{
 		std::istringstream iss(line);
-		std::string vert;
+		std::string vert, facet;
 		double  x, y, z;
 		if ((iss >> vert >> x >> y >> z) && vert == "vertex")
 		{
@@ -109,35 +110,47 @@ std::vector<double> read_stl_ascii(std::string file_name)
 		}
 	}
 	file.close();
-	return nodes;
+	file.open(file_name);
+	while (std::getline(file, line))
+	{
+		std::istringstream iss(line);
+		std::string vert, facet;
+		double  x, y, z;
+         if ((iss >> facet >> vert >> x >> y >> z) && vert == "normal")
+		{
+			normals.push_back(x);normals.push_back(y);normals.push_back(z);
+			normals.push_back(x); normals.push_back(y); normals.push_back(z);
+			normals.push_back(x); normals.push_back(y); normals.push_back(z);
+		}
+	}
+	file.close();
 }
 
-std::vector<double> read_stl(std::string file_name)
+void read_stl(std::string file_name,std::vector<double>& nodes, std::vector<double>& normals)
 {
 	// inspired by: https://stackoverflow.com/questions/26171521/verifying-that-an-stl-file-is-ascii-or-binary
 	std::ifstream file_test(file_name, std::ifstream::ate | std::ifstream::binary);
-	std::vector<double> nodes;
 	if (!file_test)
 	{
 		std::cout << "Failed to open stl file: " << file_name << "\n";
-		return nodes;
+		exit(1);
 	}
 
-	int file_size = file_test.tellg();
+	auto file_size = file_test.tellg();
 	file_test.close();
 
 	// The minimum size of an empty ASCII file is 15 bytes.
 	if (file_size < 15)
 	{
 		std::cout << "Invalid stl file: " << file_name << "\n";
-		return nodes;
+		exit(1);
 	}
 
 	std::ifstream file(file_name, std::ios::in | std::ios::binary);
 	if (!file)
 	{
 		std::cout << "Failed to open stl file: " << file_name << "\n";
-		return nodes;
+		exit(1);
 	}
 
 	char first[5];
@@ -149,17 +162,16 @@ std::vector<double> read_stl(std::string file_name)
 		first[3] == 'i' &&
 		first[4] == 'd')
 	{
-		nodes = read_stl_ascii(file_name);
+		read_stl_ascii(file_name, nodes, normals);
 	}
 	else
 	{
-		nodes = read_stl_binary(file_name);
+		read_stl_binary(file_name,nodes,normals);
 	}
-	return nodes;
 }
 
 
-void export_html_mesh(std::string file_name, std::vector<double> nodes)
+void export_html_mesh(std::string file_name, std::vector<double> nodes, std::vector<double> normals)
 {
 	std::ofstream html_file;
 	html_file.open(file_name);
@@ -183,6 +195,13 @@ void export_html_mesh(std::string file_name, std::vector<double> nodes)
 	{
 		html_file << cnt + 0 << ", " << cnt + 1 << ", " << cnt + 2 << ",\n";
 		cnt += 3;
+	}
+	html_file << "]\n\n";
+
+	html_file << "var normals = [\n";
+	for (int i = 0; i < normals.size() / 3; i++)
+	{
+		html_file << normals[i*3 + 0] << ", " << normals[i * 3 + 1] << ", " << normals[i * 3 + 2] << ",\n";
 	}
 	html_file << "]\n\n";
 
@@ -268,16 +287,19 @@ int main(int arv, char* argc[])
 		arg_cnt++;
 	}
 
-	std::vector<double> nodes = read_stl(input_file);
+	std::vector<double> nodes, normals;
+	read_stl(input_file,nodes, normals);
 	if (nodes.size()/9 == 0)
 	{
 		std::cout << "No triangles found in stl file: " << input_file << "\n";
 		return 1;
 	}
 	
+
+
 	nodes = rescale(nodes);
 	std::cout << "Read " << nodes.size() / 9 << " triangles from " << input_file << "\n";
-	export_html_mesh(output_file, nodes);
+	export_html_mesh(output_file, nodes,normals);
 	std::cout << "Exported HTML file: " << output_file << "\n";
 	return 0;
 }
