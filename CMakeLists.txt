@@ -32,6 +32,12 @@ ADD_TEST(
 	WORKING_DIRECTORY "${PROJECT_SOURCE_DIR}/test"
 )
 
+ADD_TEST(
+	NAME single_tri_blue
+	COMMAND stltohtml single_tri.stl single_tri_blue.html color 0 0 1
+	WORKING_DIRECTORY "${PROJECT_SOURCE_DIR}/test"
+)
+
 INSTALL(TARGETS ${PROJECT_NAME} DESTINATION "bin/")
 
 if(WIN32)

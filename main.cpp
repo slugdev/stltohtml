@@ -171,7 +171,7 @@ void read_stl(std::string file_name,std::vector<double>& nodes, std::vector<doub
 }
 
 
-void export_html_mesh(std::string file_name, std::vector<double> nodes, std::vector<double> normals, double color[3])
+void export_html_mesh(std::string file_name, std::vector<double> nodes, std::vector<double> normals, double color[3],bool color_by_z)
 {
 	std::ofstream html_file;
 	html_file.open(file_name);
@@ -205,14 +205,35 @@ void export_html_mesh(std::string file_name, std::vector<double> nodes, std::vec
 	}
 	html_file << "]\n\n";
 
-	html_file << "var colors = [\n";
-	for (int i = 0; i < nodes.size() / 9; i++)
+	if (!color_by_z)
 	{
-		html_file << color[0] << ", " << color[1] << ", " << color[2] << ", " <<
-			color[0] << ", " << color[1] << ", " << color[2] << ", " <<
-			color[0] << ", " << color[1] << ", " << color[2] << ", " << "\n";
+		html_file << "var colors = [\n";
+		for (int i = 0; i < nodes.size() / 9; i++)
+		{
+			html_file << color[0] << ", " << color[1] << ", " << color[2] << ", " <<
+				color[0] << ", " << color[1] << ", " << color[2] << ", " <<
+				color[0] << ", " << color[1] << ", " << color[2] << ", " << "\n";
+		}
+		html_file << "]\n\n";
 	}
-	html_file << "]\n\n";
+	else
+	{
+		double targ_size = 3.0;
+		html_file << "var colors = [\n";
+		for (int i = 0; i < nodes.size() / 9; i++)
+		{
+			double z = nodes[i * 9 + 2];
+			if (z <= 0.0)
+			{
+				color[0] = 1 - ((z + 3) / 3);
+			}
+			html_file << color[0] << ", " << color[1] << ", " << color[2] << ", ";
+			html_file << color[0] << ", " << color[1] << ", " << color[2] << ", ";
+			html_file << color[0] << ", " << color[1] << ", " << color[2] << ", " << "\n";
+		}
+		html_file << "]\n\n";
+	}
+
 	html_file << mainjs;
 	html_file << htmlpost;
 }
@@ -259,7 +280,7 @@ int main(int arv, char* argc[])
 {
 	double tol = 1e-6;
 	bool mergeplanar = false;
-	std::string help = "stltohtml <stl_file> <html_file>\n";
+	std::string help = "stltohtml <stl_file> <html_file> [colorbyzheight | color <r g b>]\n";
 
 	if (arv < 3)
 	{
@@ -270,13 +291,33 @@ int main(int arv, char* argc[])
 	std::string input_file = argc[1];
 	std::string output_file = argc[2];
 	int arg_cnt = 3;
+	bool color_by_z = false;
+	double color[3] = { 1,0,0 };
 	while (arg_cnt < arv)
 	{
 		std::string cur_arg = argc[arg_cnt];
-		if (cur_arg == "tol")
+		if (cur_arg == "colorbyzheight")
 		{
-			tol = std::atof(argc[arg_cnt + 1]);
-			std::cout << "Minimum edge tolerance set to " << tol << "\n";
+			color_by_z = true;
+			std::cout << "Coloring verticies by z height\n";
+		}
+		else if (cur_arg == "color")
+		{
+			if (arv - arg_cnt < 3)
+			{
+				std::cout << "3 color parameters needed (r g b) \n";
+				return 1;
+			}
+			color[0] = std::atof(argc[arg_cnt + 1]);
+			std::cout << "Red set to " << color[0] << "\n";
+			arg_cnt++;
+
+			color[1] = std::atof(argc[arg_cnt + 1]);
+			std::cout << "Green set to " << color[1] << "\n";
+			arg_cnt++;
+
+			color[2] = std::atof(argc[arg_cnt + 1]);
+			std::cout << "Blue set to " << color[2] << "\n";
 			arg_cnt++;
 		}
 		else
@@ -295,11 +336,9 @@ int main(int arv, char* argc[])
 		return 1;
 	}
 	
-
-	double color[3] = { 1,0,0 };
 	nodes = rescale(nodes);
 	std::cout << "Read " << nodes.size() / 9 << " triangles from " << input_file << "\n";
-	export_html_mesh(output_file, nodes,normals, color);
+	export_html_mesh(output_file, nodes,normals, color, color_by_z);
 	std::cout << "Exported HTML file: " << output_file << "\n";
 	return 0;
 }
